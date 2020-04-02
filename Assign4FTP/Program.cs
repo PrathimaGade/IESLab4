@@ -35,7 +35,16 @@ namespace Assign4FTP
             {
                 Student student = new Student() { AbsoluteUrl = Constants.FTP.BaseUrl };
                 student.FromDirectory(directory);
+            }
+
+
+            foreach (var s in students)
+            {
+                var guid = Guid.NewGuid();
+                Student student = new Student();
+                student.UID = guid.ToString();
                 students.Add(student);
+                Console.WriteLine(s.UID + " - " + s.ToString());
             }
             HttpWebRequest WebReq = (HttpWebRequest)WebRequest.Create(string.Format("https://jsonplaceholder.typicode.com/users"));
 
@@ -57,9 +66,10 @@ namespace Assign4FTP
             Console.WriteLine(items.Count());
             Console.WriteLine(jsonString);
 
+            /*-----------------------WORD DOCUMENT-------------------------------------- */
 
             string docxFilePath = $"{Constants.Locations.DataFolder}//info.docx";
-            string ftpImagePath = $"/" ;
+            //string ftpImagePath = Constants.FTP.BaseUrl + "/200430242 BalaPrathima Gade/myimage.jpg";
             string studentsImagePath = $"{Constants.Locations.ImagesFolder}//myimage.jpg";
             // Create a document by supplying the filepath. 
             using (WordprocessingDocument wordDocument =
@@ -83,11 +93,11 @@ namespace Assign4FTP
                 //Word.AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
                 Paragraph para = body.AppendChild(new Paragraph());
                 Run run = para.AppendChild(new Run());
-               
 
-                
 
-                
+
+
+
 
                 foreach (var student in items)
                 {
@@ -97,119 +107,30 @@ namespace Assign4FTP
                     run.AppendChild(new Text("My Name is: "));
                     run.AppendChild(new Text(student.Name.ToString()));
                     run.AppendChild(new Text("    "));
+                    using (FileStream stream = new FileStream(studentsImagePath, FileMode.Open))
+                    {
+                        imagePart.FeedData(stream);
+                    }
+                    AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
+                    //}
                     run.AppendChild(new Break() { Type = BreakValues.Page });
 
 
-                    //if (student.Record == true)
-                    //{
-                        using (FileStream stream = new FileStream(studentsImagePath, FileMode.Open))
-                        {
-                            imagePart.FeedData(stream);
-                        }
-                        AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
-                    //}
+
 
 
                 }
 
             }
-           // using (WordprocessingDocument wordprocessingDocument =
-           //WordprocessingDocument.Open(docxFilePath, true))
-           // {
-           //     MainDocumentPart mainPart = wordprocessingDocument.MainDocumentPart;
-
-           //     ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-
-           //     using (FileStream stream = new FileStream(studentsImagePath, FileMode.Open))
-           //     {
-           //         imagePart.FeedData(stream);
-           //     }
-
-           //     AddImageToBody(wordprocessingDocument, mainPart.GetIdOfPart(imagePart));
-           // }
 
 
 
 
 
-
-
-            //string studentsjsonPath = $"{Constants.Locations.DataFolder}//students.json";
-            ////Establish a file stream to collect data from the response
-            //using (StreamWriter fs = new StreamWriter(studentsjsonPath))
-            //{
-            //    foreach (var student in students)
-            //    {
-            //        string Student = Newtonsoft.Json.JsonConvert.SerializeObject(student);
-            //        fs.WriteLine(Student.ToString());
-            //        //Console.WriteLine(jStudent);
-            //    }
-            //}
-
-
-
-            //string studentsExcelPath = $"{Constants.Locations.DataFolder}//students.xlsx";
-
-            //SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.
-            //Create(studentsExcelPath, SpreadsheetDocumentType.Workbook);
-
-            //// Add a WorkbookPart to the document.
-            //WorkbookPart workbookpart = spreadsheetDocument.AddWorkbookPart();
-            //workbookpart.Workbook = new DocumentFormat.OpenXml.Spreadsheet.Workbook();
-
-            //// Add a WorksheetPart to the WorkbookPart.
-            //WorksheetPart worksheetPart = workbookpart.AddNewPart<WorksheetPart>();
-            //worksheetPart.Worksheet = new DocumentFormat.OpenXml.Spreadsheet.Worksheet(new DocumentFormat.OpenXml.Spreadsheet.SheetData());
-
-            //// Add Sheets to the Workbook.
-            //DocumentFormat.OpenXml.Spreadsheet.Sheets sheets = spreadsheetDocument.WorkbookPart.Workbook.
-            //    AppendChild<DocumentFormat.OpenXml.Spreadsheet.Sheets>(new DocumentFormat.OpenXml.Spreadsheet.Sheets());
-
-            //// Append a new worksheet and associate it with the workbook.
-            //DocumentFormat.OpenXml.Spreadsheet.Sheet sheet = new DocumentFormat.OpenXml.Spreadsheet.Sheet()
-            //{
-            //    Id = spreadsheetDocument.WorkbookPart.
-            //    GetIdOfPart(worksheetPart),
-            //    SheetId = 1,
-            //    Name = "mySheet"
-            //};
-            //sheets.Append(sheet);
-
-            //workbookpart.Workbook.Save();
-
-            //// Close the document.
-            //spreadsheetDocument.Close();
-
-
-
-            //    string studentsxmlPath = $"{Constants.Locations.DataFolder}//students.xml";
-            //    //Establish a file stream to collect data from the response
-            //    using (StreamWriter fs = new StreamWriter(studentsxmlPath))
-            //    {
-            //        XmlSerializer x = new XmlSerializer(students.GetType());
-            //        x.Serialize(fs, students);
-            //        Console.WriteLine();
-            //    }
-
-           
-           
-
-            //    return;
 
 
         }
 
-
-        //        ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-
-        //        using (FileStream stream = new FileStream(fileName, FileMode.Open))
-        //        {
-        //            imagePart.FeedData(stream);
-        //        }
-
-        //        AddImageToBody(wordprocessingDocument, mainPart.GetIdOfPart(imagePart));
-        //    }
-        //}
 
         public static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId)
         {

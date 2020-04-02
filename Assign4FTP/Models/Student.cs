@@ -13,7 +13,8 @@ namespace Assign4FTP.Models
         public string StudentId { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public Boolean Record { get; set; }
+        public Boolean IsMe { get; set; }
+        public string UID { get; set; }
 
         private string _DateOfBirth;
         public string DateOfBirth
