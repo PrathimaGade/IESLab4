@@ -1,22 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Xml.Serialization;
+using Assign4FTP.Models;
 
-namespace Assign4FTP.Models
+namespace FTPAp.Models
 {
     public class Student
     {
-        public static string HeaderRow = $"{nameof(Student.StudentId)},{nameof(Student.FirstName)},{nameof(Student.LastName)},{nameof(Student.DateOfBirth)},{nameof(Student.ImageData)}";
 
+        public static string HeaderRow = $"{nameof(Student.StudentId)},{nameof(Student.FirstName)},{nameof(Student.LastName)},{nameof(Student.DateOfBirth)},{nameof(Student.ImageData)}";
+        public string UID { get; set; }
         public string StudentId { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public Boolean IsMe { get; set; }
-        public string UID { get; set; }
-
         private string _DateOfBirth;
+        public string ImageData { get; set; }
+        public bool IsMe { get; set; }
+        
+
+
         public string DateOfBirth
         {
             get { return _DateOfBirth; }
@@ -31,74 +31,17 @@ namespace Assign4FTP.Models
             }
         }
 
-        public DateTime DateOfBirthDT { get; set; }
-        public string ImageData { get; set; }
-        public string MyRecord { get; set; }
-        public string AbsoluteUrl { get; set; }
-        public string Directory { get; set; }
+        public DateTime DateOfBirthDT { get; internal set; }
 
-        public string InfoCSVPath { get { return (Constants.FTP.BaseUrl + "/" + Directory + "/" + Constants.Locations.InfoFile); } }
-        public string MyImagePath { get { return (Constants.FTP.BaseUrl + "/" + Directory + "/" + Constants.Locations.ImageFile); } }
-        public string FullPathUrl
+        public virtual int Age
         {
             get
             {
-                return AbsoluteUrl + "/" + Directory;
-            }
-        }
+                if (DateOfBirthDT == DateTime.MinValue)
+                {
+                    return 0;
+                }
 
-        public List<string> Exceptions { get; set; } = new List<string>();
-
-        public void FromCSV(string csvdata)
-        {
-            string[] data = csvdata.Split(",", StringSplitOptions.None);
-            try
-            {
-                StudentId = data[0];
-                FirstName = data[1];
-                LastName = data[2];
-                DateOfBirth = data[3];
-                ImageData = data[4];
-                MyRecord = data[5];
-            }
-            catch (Exception e)
-            {
-                Exceptions.Add(e.Message);
-            }
-        }
-
-        public void FromDirectory(string directory)
-        {
-            Directory = directory;
-
-            if (String.IsNullOrEmpty(directory.Trim()))
-            {
-                return;
-            }
-
-            string[] data = directory.Trim().Split(" ", StringSplitOptions.None);
-
-            StudentId = data[0];
-            FirstName = data[1];
-            LastName = data[2];
-        }
-
-        public string ToCSV()
-        {
-            string result = $"{StudentId},{FirstName},{LastName},{DateOfBirthDT.ToShortDateString()},{ImageData}";
-            return result;
-        }
-
-        public override string ToString()
-        {
-            string result = $"{StudentId} {FirstName} {LastName}";
-            return result;
-        }
-
-        public virtual int age
-        {
-            get
-            {
                 DateTime Now = DateTime.Now;
                 int Years = new DateTime(DateTime.Now.Subtract(DateOfBirthDT).Ticks).Year - 1;
                 DateTime PastYearDate = DateOfBirthDT.AddYears(Years);
@@ -122,7 +65,63 @@ namespace Assign4FTP.Models
                 int Seconds = Now.Subtract(PastYearDate).Seconds;
                 return Years;
             }
-
         }
+
+
+        public string AbsoluteUrl { get; set; }
+
+        public string Directory { get; set; }
+
+        //public string InfoCSVPath { get { return (Constants.FTP.BaseUrl + "/" + Directory + "/" + Constants.Student.InfoCSVFileName); } }
+
+        public string MyImagePath { get { return (Constants.FTP.BaseUrl + "/" + Directory + "/" + Constants.Student.MyImageFileName); } }
+
+        public string FullPathUrl
+        {
+            get
+            {
+                return AbsoluteUrl + "/" + Directory;
+            }
+        }
+
+        public void FromCSV(string csvdata)
+        {
+            string[] data = csvdata.Split(",", StringSplitOptions.None);
+
+            StudentId = data[0];
+            FirstName = data[1];
+            LastName = data[2];
+            DateOfBirth = data[3];
+            ImageData = data[4];
+        }
+
+        public void FromDirectory(string directory)
+        {
+            Directory = directory;
+
+            if (String.IsNullOrEmpty(directory.Trim()))
+            {
+                return;
+            }
+
+            string[] data = directory.Trim().Split(" ", StringSplitOptions.None);
+
+            StudentId = data[0];
+            FirstName = data[1];
+            LastName = data[2];
+        }
+
+        public string ToCSV()
+        {
+            string result = $"{StudentId},{FirstName},{LastName},{DateOfBirthDT.ToShortDateString()},{ImageData},{IsMe}";
+            return result;
+        }
+
+        public override string ToString()
+        {
+            string result = $"{StudentId} {FirstName} {LastName}";
+            return result;
+        }
+
     }
 }

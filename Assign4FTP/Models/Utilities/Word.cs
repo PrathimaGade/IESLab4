@@ -34,7 +34,7 @@ namespace Assign4FTP.Models.Utilities
         //    }
         //}
 
-        public void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId)
+        public static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId)
         {
             // Define the reference of the image.
             var element =

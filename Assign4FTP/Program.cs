@@ -17,6 +17,16 @@ using Assign4FTP.Models.Utilities;
 using System.Net;
 using Newtonsoft.Json;
 using Assign4FTP.Model;
+using System.Linq;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Run = DocumentFormat.OpenXml.Wordprocessing.Run;
+using Text = DocumentFormat.OpenXml.Wordprocessing.Text;
+using Break = DocumentFormat.OpenXml.Wordprocessing.Break;
+using FTPAp.Models;
+using Assign4FTP.Models.Utilities;
+using System.Drawing.Imaging;
 
 namespace Assign4FTP
 {
@@ -27,25 +37,23 @@ namespace Assign4FTP
         static void Main(string[] args)
         {
             Student myrecord = new Student { StudentId = "200430242", FirstName = "BalaPrathima", LastName = "Gade" };
-
+            Student student1 = new Student();
             List<string> directories = FTP.GetDirectory(Constants.FTP.BaseUrl);
             List<Student> students = new List<Student>();
-
             foreach (var directory in directories)
             {
                 Student student = new Student() { AbsoluteUrl = Constants.FTP.BaseUrl };
+                student.UID = Guid.NewGuid().ToString();
                 student.FromDirectory(directory);
-            }
-
-
-            foreach (var s in students)
-            {
-                var guid = Guid.NewGuid();
-                Student student = new Student();
-                student.UID = guid.ToString();
+                if (student.StudentId == "200430242")
+                {
+                    student.IsMe = true;
+                }
                 students.Add(student);
-                Console.WriteLine(s.UID + " - " + s.ToString());
             }
+
+
+
             HttpWebRequest WebReq = (HttpWebRequest)WebRequest.Create(string.Format("https://jsonplaceholder.typicode.com/users"));
 
             WebReq.Method = "GET";
@@ -61,9 +69,9 @@ namespace Assign4FTP
                 StreamReader reader = new StreamReader(stream, System.Text.Encoding.UTF8);
                 jsonString = reader.ReadToEnd();
             }
-            List<Users> items = JsonConvert.DeserializeObject<List<Users>>(jsonString);
+            List<Model.Users> users = JsonConvert.DeserializeObject<List<Model.Users>>(jsonString);
 
-            Console.WriteLine(items.Count());
+            Console.WriteLine(users.Count());
             Console.WriteLine(jsonString);
 
             /*-----------------------WORD DOCUMENT-------------------------------------- */
@@ -85,12 +93,6 @@ namespace Assign4FTP
                 mainPart.Document = new Document();
                 Body body = mainPart.Document.AppendChild(new Body());
                 ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                //using (FileStream stream = new FileStream(studentsImagePath, FileMode.Open))
-                //{
-                //    imagePart.FeedData(stream);
-                //}
-
-                //Word.AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
                 Paragraph para = body.AppendChild(new Paragraph());
                 Run run = para.AppendChild(new Run());
 
@@ -98,121 +100,188 @@ namespace Assign4FTP
 
 
 
-
-                foreach (var student in items)
+                
+                foreach (var user in users)
                 {
                     run.AppendChild(new Text("Id:"));
-                    run.AppendChild(new Text(student.Id.ToString()));
-                    run.AppendChild(new Text("    "));
+                    run.AppendChild(new Text(user.Id.ToString()));
+                    run.AppendChild(new Text("   "));
                     run.AppendChild(new Text("My Name is: "));
-                    run.AppendChild(new Text(student.Name.ToString()));
+                    run.AppendChild(new Text(user.Name.ToString()));
                     run.AppendChild(new Text("    "));
+                    run.AppendChild(new Text("My Email is: "));
+                    run.AppendChild(new Text(user.Email.ToString()));
+                    run.AppendChild(new Text("    "));
+                    run.AppendChild(new Break());
                     using (FileStream stream = new FileStream(studentsImagePath, FileMode.Open))
                     {
                         imagePart.FeedData(stream);
                     }
-                    AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
-                    //}
+                    Word.AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart));
+
+
+
                     run.AppendChild(new Break() { Type = BreakValues.Page });
-
-
-
-
-
                 }
 
             }
+            /*-----------------------------EXCEL DOCUMENT-------------------------------------------*/
+
+			string xlsxFilePath = $"{Constants.Locations.DataFolder}//info.xlsx";
+
+			// Create a spreadsheet document by supplying the filepath.
+			// By default, AutoSave = true, Editable = true, and Type = xlsx.
+			SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Create(xlsxFilePath, SpreadsheetDocumentType.Workbook);
+
+                                      //Creating Excel Document Structure//
+
+			// Add a WorkbookPart to the document.
+			WorkbookPart workbookpart = spreadsheetDocument.AddWorkbookPart();
+			workbookpart.Workbook = new Workbook();
+
+			// Add a WorksheetPart to the WorkbookPart.
+			WorksheetPart worksheetPart = workbookpart.AddNewPart<WorksheetPart>();
+			worksheetPart.Worksheet = new Worksheet(new SheetData());
+
+			// Add Sheets to the Workbook.
+			Sheets sheets = spreadsheetDocument.WorkbookPart.Workbook.AppendChild<Sheets>(new Sheets());
+
+                     
+            SharedStringTablePart shareStringPart;
+			shareStringPart = spreadsheetDocument.WorkbookPart.AddNewPart<SharedStringTablePart>();
+
+			WorksheetPart worksheetPart2 = workbookpart.AddNewPart<WorksheetPart>();
+			worksheetPart2.Worksheet = new Worksheet(new SheetData());
+			Sheet sheet = new Sheet()
+			{
+				Id = spreadsheetDocument.WorkbookPart.GetIdOfPart(worksheetPart2),
+				SheetId = 1,
+				Name = "studentdata"
+			};
+			sheets.Append(sheet);
+
+            //Creating Heading Row
+            string[] headingRow = { "UID", "StudentID","FirstName", "LastName", "DateofBirth", "IsMe", "Age" };
+            char headingIndex = 'A';
+            for(int i=0;i< headingRow.Count(); i++)
+            {
+                Excel.InsertCellInWorksheet(headingIndex.ToString(), 1, worksheetPart2).CellValue = new CellValue(Excel.InsertSharedStringItem(headingRow[i], shareStringPart).ToString());
+                Excel.InsertCellInWorksheet(headingIndex.ToString(), 1, worksheetPart2).DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                headingIndex++;
+            }
+
+            //Processing student Data 
+            uint rowIndex = 2;
+            foreach (var student in students)
+            {
+                char columnIndex = 'A';
+                int uidIndex = Excel.InsertSharedStringItem(student.UID.ToString(), shareStringPart);
+                Cell uidCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                uidCell.CellValue = new CellValue(uidIndex.ToString());
+                uidCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+
+                string ID = student.StudentId;
+
+                int studentIdIndex = Excel.InsertSharedStringItem(ID, shareStringPart);
+                Cell studentCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                studentCell.CellValue = new CellValue(studentIdIndex.ToString());
+                studentCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+                int firstIndex = Excel.InsertSharedStringItem(student.FirstName.ToString(), shareStringPart);
+                Cell firstCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                firstCell.CellValue = new CellValue(firstIndex.ToString());
+                firstCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+
+                int Lastindex = Excel.InsertSharedStringItem(student.LastName.ToString(), shareStringPart);
+                Cell LastCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                LastCell.CellValue = new CellValue(Lastindex.ToString());
+                LastCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+                int DOBIndex = Excel.InsertSharedStringItem(student.DateOfBirthDT.ToShortDateString(), shareStringPart);
+                Cell DOBCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                DOBCell.CellValue = new CellValue(DOBIndex.ToString());
+                DOBCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+                int IsMeIndex = Excel.InsertSharedStringItem(student.IsMe.ToString(), shareStringPart);
+                Cell IsMeCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                IsMeCell.CellValue = new CellValue(IsMeIndex.ToString());
+                IsMeCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                columnIndex++;
+
+
+                int ageIndex = Excel.InsertSharedStringItem(student.Age.ToString(), shareStringPart);
+                Cell ageCell = Excel.InsertCellInWorksheet(columnIndex.ToString(), rowIndex, worksheetPart2);
+                ageCell.CellValue = new CellValue(ageIndex.ToString());
+                ageCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+
+                rowIndex++;
+            }
+
+
+            // Save and Close the document.
+            workbookpart.Workbook.Save();
+			spreadsheetDocument.Close();
+		}
 
 
 
 
 
-
-
-        }
-
-
-        public static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId)
-        {
-            // Define the reference of the image.
-            var element =
-                 new DocumentFormat.OpenXml.Wordprocessing.Drawing(
-                     new DW.Inline(
-                         new DW.Extent() { Cx = 990000L, Cy = 792000L },
-                         new DW.EffectExtent()
-                         {
-                             LeftEdge = 0L,
-                             TopEdge = 0L,
-                             RightEdge = 0L,
-                             BottomEdge = 0L
-                         },
-                         new DW.DocProperties()
-                         {
-                             Id = (UInt32Value)1U,
-                             Name = "Picture 1"
-                         },
-                         new DW.NonVisualGraphicFrameDrawingProperties(
-                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
-                         new A.Graphic(
-                             new A.GraphicData(
-                                 new PIC.Picture(
-                                     new PIC.NonVisualPictureProperties(
-                                         new PIC.NonVisualDrawingProperties()
-                                         {
-                                             Id = (UInt32Value)0U,
-                                             Name = "New Bitmap Image.jpg"
-                                         },
-                                         new PIC.NonVisualPictureDrawingProperties()),
-                                     new PIC.BlipFill(
-                                         new A.Blip(
-                                             new A.BlipExtensionList(
-                                                 new A.BlipExtension()
-                                                 {
-                                                     Uri =
-                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
-                                                 })
-                                         )
-                                         {
-                                             Embed = relationshipId,
-                                             CompressionState =
-                                             A.BlipCompressionValues.Print
-                                         },
-                                         new A.Stretch(
-                                             new A.FillRectangle())),
-                                     new PIC.ShapeProperties(
-                                         new A.Transform2D(
-                                             new A.Offset() { X = 0L, Y = 0L },
-                                             new A.Extents() { Cx = 990000L, Cy = 792000L }),
-                                         new A.PresetGeometry(
-                                             new A.AdjustValueList()
-                                         )
-                                         { Preset = A.ShapeTypeValues.Rectangle }))
-                             )
-                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
-                     )
-                     {
-                         DistanceFromTop = (UInt32Value)0U,
-                         DistanceFromBottom = (UInt32Value)0U,
-                         DistanceFromLeft = (UInt32Value)0U,
-                         DistanceFromRight = (UInt32Value)0U,
-                         EditId = "50D07946"
-                     });
-
-            // Append the reference to body, the element should be in a Run.
-            wordDoc.MainDocumentPart.Document.Body.AppendChild(new DocumentFormat.OpenXml.Wordprocessing.Paragraph(new Run(element)));
-        }
-
-
-        //public static Image Base64ToImage(string base64String)
+        ///// this inserts a new worksheet, need to find a way to have it edit existing. Need one function for create a new sheet, and one for edit existing.
+        //public static void InsertText(string docName, string text, uint rownum, string colletter)
         //{
-        //    // Convert Base64 String to byte[]
-        //    byte[] imageBytes = Convert.FromBase64String(base64String.Trim());
-        //    var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
-        //    // Convert byte[] to Image
-        //    ms.Write(imageBytes, 0, imageBytes.Length);
-        //    System.Drawing.Image image = System.Drawing.Image.FromStream(ms, true);
-        //    return image;
+        //    // Open the document for editing.
+        //    using (SpreadsheetDocument spreadSheet = SpreadsheetDocument.Open(docName, true))
+        //    {
+        //        // Get the SharedStringTablePart. If it does not exist, create a new one.
+        //        SharedStringTablePart shareStringPart;
+        //        if (spreadSheet.WorkbookPart.GetPartsOfType<SharedStringTablePart>().Count() > 0)
+        //        {
+        //            shareStringPart = spreadSheet.WorkbookPart.GetPartsOfType<SharedStringTablePart>().First();
+        //        }
+        //        else
+        //        {
+        //            shareStringPart = spreadSheet.WorkbookPart.AddNewPart<SharedStringTablePart>();
+        //        }
+
+
+        //        // Insert the text into the SharedStringTablePart.
+        //        int index = InsertSharedStringItem(text, shareStringPart);
+
+
+        //        // Insert a new worksheet.
+        //        WorksheetPart worksheetPart = InsertWorksheet(spreadSheet.WorkbookPart);
+
+
+        //        // Insert cell A1 into the new worksheet.
+        //        Cell cell = InsertCellInWorksheet(colletter, rownum, worksheetPart);
+
+
+        //        // Set the value of cell A1.
+        //        cell.CellValue = new CellValue(index.ToString());
+        //        cell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+
+
+        //        // Save the new worksheet.
+        //        worksheetPart.Worksheet.Save();
+        //        spreadSheet.Close();
+
+        //    }
         //}
 
     }
+
+    
 }
